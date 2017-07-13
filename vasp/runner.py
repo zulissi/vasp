@@ -72,6 +72,8 @@ def calculate(self, atoms=None, properties=['energy'],
     If we are in the queue, we should run it, otherwise, a job should
     be submitted.
     """
+
+
     log.debug('In queue: {}'.format(self.in_queue()))
     if self.in_queue():
         raise VaspQueued('{} Queued: {}'.format(self.directory,
@@ -90,6 +92,9 @@ def calculate(self, atoms=None, properties=['energy'],
     # The subclass implementation should first call this
     # implementation to set the atoms attribute.
     Calculator.calculate(self, atoms, properties, system_changes)
+
+    #IMPORTANT CHANGE TO ENABLE RELAXATIONS FROM ASE
+    self.sort_atoms(atoms)
 
     self.write_input(atoms, properties, system_changes)
     if self.parameters.get('luse_vdw', False):
@@ -145,6 +150,54 @@ def calculate(self, atoms=None, properties=['energy'],
                         vaspcmd = VASPRC['vasp.executable.parallel']
                         parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
                         exitcode = os.system(parcmd)
+                        return exitcode
+        elif 'SLURM_NNODES' in os.environ:
+            # we are in the queue. determine if we should run serial
+            # or parallel
+            NPROCS=int(os.environ['SLURM_NPROCS'])
+            log.debug('Found {0} PROCS'.format(NPROCS))
+            if NPROCS == 1:
+                # no question. running in serial.
+                vaspcmd = VASPRC['vasp.executable.serial']
+                log.debug('NPROCS = 1. running in serial')
+                exitcode = os.system(vaspcmd)
+                return exitcode
+            else:
+                # vanilla MPI run. multiprocessing does not work on more
+                # than one node, and you must specify in VASPRC to use it
+                if (VASPRC['queue.nodes'] > 1
+                    or (VASPRC['queue.nodes'] == 1
+                        and VASPRC['queue.ppn'] > 1
+                        and (VASPRC['multiprocessing.cores_per_process']
+                             == 'None'))):
+                    s = 'queue.nodes = {0}'.format(VASPRC['queue.nodes'])
+                    log.debug(s)
+                    log.debug('queue.ppn = {0}'.format(VASPRC['queue.ppn']))
+                    mpc = VASPRC['multiprocessing.cores_per_process']
+                    log.debug('multiprocessing.cores_per_process'
+                              '= {0}'.format(mpc))
+                    log.debug('running vanilla MPI job')
+
+                    log.debug('MPI NPROCS = {}'.format(NPROCS))
+                    vaspcmd = VASPRC['vasp.executable.parallel']
+                    parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
+                    exitcode = os.system(parcmd)
+                    self.read_results()
+                    return exitcode
+                else:
+                    # we need to run an MPI job on cores_per_process
+                    if VASPRC['multiprocessing.cores_per_process'] == 1:
+                        log.debug('running single core multiprocessing job')
+                        vaspcmd = VASPRC['vasp.executable.serial']
+                        exitcode = os.system(vaspcmd)
+                    elif VASPRC['multiprocessing.cores_per_process'] > 1:
+                        log.debug('running mpi multiprocessing job')
+                        NPROCS = VASPRC['multiprocessing.cores_per_process']
+
+                        vaspcmd = VASPRC['vasp.executable.parallel']
+                        parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
+                        exitcode = os.system(parcmd)
+                        self.read_results()
                         return exitcode
         else:
             # probably running at cmd line, in serial.

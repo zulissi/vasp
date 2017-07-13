@@ -232,7 +232,8 @@ def get_elapsed_time(self):
     # fragile but fast.
     m = re.search(regexp, lines[-8])
 
-    time = m.groupdict().get('time', None)
+    #time = m.groupdict().get('time', None)
+    time=0
     if time is not None:
         return float(time)
     else:
