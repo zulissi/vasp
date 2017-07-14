@@ -134,6 +134,7 @@ def calculate(self, atoms=None, properties=['energy'],
 
                     log.debug('MPI NPROCS = {}'.format(NPROCS))
                     vaspcmd = VASPRC['vasp.executable.parallel']
+                    parcmd = VASPRC['system.mpicall'](NPROCS,vaspcmd)
                     parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
                     exitcode = os.system(parcmd)
                     return exitcode
@@ -180,7 +181,7 @@ def calculate(self, atoms=None, properties=['energy'],
 
                     log.debug('MPI NPROCS = {}'.format(NPROCS))
                     vaspcmd = VASPRC['vasp.executable.parallel']
-                    parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
+                    parcmd = VASPRC['system.mpicall'](NPROCS,vaspcmd)
                     exitcode = os.system(parcmd)
                     self.read_results()
                     return exitcode
@@ -195,7 +196,7 @@ def calculate(self, atoms=None, properties=['energy'],
                         NPROCS = VASPRC['multiprocessing.cores_per_process']
 
                         vaspcmd = VASPRC['vasp.executable.parallel']
-                        parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
+                        parcmd = VASPRC['system.mpicall'](NPROCS,vaspcmd)
                         exitcode = os.system(parcmd)
                         self.read_results()
                         return exitcode
