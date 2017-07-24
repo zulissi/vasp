@@ -115,6 +115,7 @@ def calculate(self, atoms=None, properties=['energy'],
                 vaspcmd = VASPRC['vasp.executable.serial']
                 log.debug('NPROCS = 1. running in serial')
                 exitcode = os.system(vaspcmd)
+                self.read_results()
                 return exitcode
             else:
                 # vanilla MPI run. multiprocessing does not work on more
@@ -137,6 +138,7 @@ def calculate(self, atoms=None, properties=['energy'],
                     parcmd = VASPRC['system.mpicall'](NPROCS,vaspcmd)
                     parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
                     exitcode = os.system(parcmd)
+                    self.read_results()
                     return exitcode
                 else:
                     # we need to run an MPI job on cores_per_process
@@ -151,6 +153,7 @@ def calculate(self, atoms=None, properties=['energy'],
                         vaspcmd = VASPRC['vasp.executable.parallel']
                         parcmd = 'mpirun -np %i %s' % (NPROCS, vaspcmd)
                         exitcode = os.system(parcmd)
+                        self.read_results()
                         return exitcode
         elif 'SLURM_NNODES' in os.environ:
             # we are in the queue. determine if we should run serial
@@ -162,6 +165,7 @@ def calculate(self, atoms=None, properties=['energy'],
                 vaspcmd = VASPRC['vasp.executable.serial']
                 log.debug('NPROCS = 1. running in serial')
                 exitcode = os.system(vaspcmd)
+                self.read_results()
                 return exitcode
             else:
                 # vanilla MPI run. multiprocessing does not work on more
